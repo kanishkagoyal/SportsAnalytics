@@ -1,0 +1,1092 @@
+
+---
+title: <span style="color:red">***Building a team for Chicago Bulls***</span>
+author: <span>**Report made by - Kanishka Goyal - u3219632**</span>
+output: html_document
+---
+
+<style type = "text/css">
+
+body{
+  font-size: 10pt;
+}
+
+code.r{
+  font-size: 10pt;
+}
+
+pre{
+  font-size: 10pt;
+}
+
+</style>
+
+&nbsp;
+&nbsp;
+
+### A. Introduction
+
+&nbsp;
+
+##### Background
+
+Basketball is a popular sport worldwide, with the NBA being one of the most popular professional sports leagues in the United States. NBA teams consist of five players assigned to specific positions - point guard, shooting guard, small forward, power forward, or center. Each position has unique roles and responsibilities, with point guards typically responsible for ball-handling and passing, centers being the tallest and most dominant players on the court, and each player's performance measured by key metrics such as points, rebounds, assists, steals, and blocks.
+
+##### Scenario
+
+In this scenario, the Chicago Bulls NBA team finished 27th out of 30 teams in the previous season, and their budget for player contracts for the upcoming season is $118 million, which ranks 26th out of 30 teams. This project aims to identify the best five starting players for the team, while ensuring that they remain within the budget.This project aims to improve the team's overall performance by selecting the best players for the starting lineup, while also providing valuable insights to the management for future team selections.
+
+##### Aim 
+
+The aim of this project is to analyze NBA player statistics and salaries to identify the best five starting players for the Chicago Bulls while staying within budget constraints.
+
+##### Importance (Justification)
+
+This project can provide valuable insights into player performance and the overall competitive landscape of the NBA. By conducting a thorough analysis of player statistics and salaries, this project can identify key trends and patterns in player performance that can be used to inform future team selections and strategies. This can provide the team with a competitive advantage, as they will have access to data-driven insights that can inform their decision-making processes.
+
+##### Budgeting
+
+Chicago Bulls Budget for 2019-2020 Season as per requirements should be roughly divided like this :- 
+&nbsp;
+Total Budget: $118 million
+&nbsp;
+5 main Player Salaries: $64 million (based on 5 starting players and 7 additional players)
+&nbsp;
+7 additional Player Salaries: $30 million (7 additional players)
+&nbsp;
+Coaching Staff: $6 million (head coach and 3 assistant coaches)
+&nbsp;
+Medical Staff: $4 million (team physician, athletic trainer, and other medical personnel)
+&nbsp;
+Travel Expenses: $10 million (transportation, lodging, and meals for the team and staff)
+&nbsp;
+Arena Expenses: $4 million (rental fees, maintenance, and utilities for the team's home arena)
+&nbsp;
+Note: This budget assumes that there are no additional unexpected expenses.
+
+Based on this budget, we can allocate $90 million towards player salaries.
+
+```{r warning = FALSE, message = FALSE, echo = FALSE}
+
+#************************************ Setup ************************************
+
+# data files - data files located in the same folder as this Rmd file. 
+
+# Check and install the required packages---------------------------------------
+
+if(!("readr" %in% rownames(installed.packages()))){
+  install.packages("readr")
+}
+
+if(!("tidyverse" %in% rownames(installed.packages()))){
+  install.packages("tidyverse")
+}
+
+if(!("GGally" %in% rownames(installed.packages()))){
+  install.packages("GGally")
+}
+
+if(!("gridExtra" %in% rownames(installed.packages()))){
+  install.packages("gridExtra")
+}
+
+if(!("modelr" %in% rownames(installed.packages()))){
+  install.packages("modelr")
+}
+
+library(readr)     # Data import
+library(tidyverse) # Data wrangle and visualization
+library(ggplot2)   # Data Visualization
+library(GGally)    # Correlation and plotting  
+library(gridExtra) # Plot arrangement 
+library(Metrics)   # Data modeling and evaluation
+library(modelr)
+
+```
+
+### B. Reading & cleaning raw data
+
+&nbsp;
+
+##### Data preprocessing
+
+Data pre-processing is a very important aspect of a data science project and accounts for almost half of the work in many cases. It helps to manage missing data, detect outliers, change variable names etc. In data pre-processing the data is cleaned in a series of steps to make it easily and readily available for later stages of the project. 
+
+#### Data Loading 
+
+```{r echo = TRUE}
+# Loading data sets into working directory--------------------------------------
+
+player_salaries <- read.csv("data/raw/2018-19_nba_player-salaries.csv")
+player_statistics <- read.csv("data/raw/2018-19_nba_player-statistics.csv")
+team_statistics_1 <- read.csv("data/raw/2018-19_nba_team-statistics_1.csv")
+team_statistics_2 <- read.csv("data/raw/2018-19_nba_team-statistics_2.csv")
+team_payroll <- read.csv("data/raw/2019-20_nba_team-payroll.csv")
+
+```
+
+&nbsp;
+
+#### Data inspection
+```{r echo = TRUE}
+
+head(player_salaries)
+head(player_statistics)
+
+colnames(player_statistics)
+colnames(team_payroll)
+
+str(player_salaries)
+str(player_statistics)
+str(team_statistics_1)
+str(team_payroll)
+
+```
+
+#### Setting my standard theme for graphs
+
+```{r echo = TRUE}
+
+my_theme <- theme(
+  panel.background = element_rect( fill = "ivory2" , color ="gray"),
+  plot.background = element_rect( color = "black"),
+  plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+  axis.title.x = element_text(size = 12, hjust = 0.5),
+  axis.title.y = element_text(size = 12, hjust = 0.5))
+
+```
+
+&nbsp;
+
+#### Data cleaning
+
+&nbsp;
+
+##### **1. Missing data management**
+
+In the data set, there are two datasets that have missing data. All these values need to be handled, either by imputing or by removing the missing values. 
+
+##### Number of missing values for all datasets
+
+```{r echo = TRUE}
+
+# Player Salaries --------------------------------------------------------------
+colSums(is.na(player_salaries))
+
+# zero missing values
+
+# Team statistics 2 ------------------------------------------------------------
+colSums(is.na(team_statistics_2))
+
+# zero missing values
+
+# Team statistics 2 ------------------------------------------------------------
+colSums(is.na(team_payroll))
+
+# Player Statistics ------------------------------------------------------------
+colSums(is.na(player_statistics))
+
+# Team statistics 1 ------------------------------------------------------------
+colSums(is.na(team_statistics_1))
+
+# Player statistics has missing values
+
+```
+
+In the **plot** shown below, you can see the with maximum number of NA values for Player Statistics. 
+
+```{r echo = FALSE, fig.align='center'}
+
+# plotting missing values for all variables for the datasets that have na values
+
+# create a data frame of count of na values
+na_values_cols <- data.frame()
+
+for(i in 1:length(player_statistics)){
+  na_values_cols[i,1] <- names(player_statistics)[i]
+  na_values_cols[i,2] <- colSums(is.na(player_statistics[i]))
+}
+names(na_values_cols) <- c("Col_name", "N_nas")
+j<- 0
+for(i in na_values_cols$N_nas){
+  if(i>0){
+    j <- j+1
+  }
+}
+
+# plot Na values 
+na_values_cols %>% 
+  arrange(desc(N_nas)) %>% 
+  slice(1:20) %>% 
+  ggplot(aes(x = reorder(Col_name, -N_nas), y = N_nas)) +
+  geom_text(aes(y = N_nas, label = N_nas, vjust = -0.5)) +
+  geom_col(fill = "coral") +
+  labs(
+    x = "Variable names",
+    y = "No. of na Values",
+    title = "Number of missing values for player statistics"
+  ) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  my_theme
+
+
+
+```
+
+&nbsp;
+
+In the **plot** shown below, you can see the with maximum number of NA values for Team Statistics. 
+
+```{r echo = FALSE, fig.align='center'}
+
+# create a data frame of count of na values
+na_values_cols <- data.frame()
+
+for(i in 1:length(team_statistics_1)){
+  na_values_cols[i,1] <- names(team_statistics_1)[i]
+  na_values_cols[i,2] <- colSums(is.na(team_statistics_1[i]))
+}
+names(na_values_cols) <- c("Col_name", "N_nas")
+j<- 0
+for(i in na_values_cols$N_nas){
+  if(i>0){
+    j <- j+1
+  }
+}
+
+# plot Na values 
+na_values_cols %>% 
+  arrange(desc(N_nas)) %>% 
+  slice(1:20) %>% 
+  ggplot(aes(x = reorder(Col_name, -N_nas), y = N_nas)) +
+  geom_text(aes(y = N_nas, label = N_nas, vjust = -0.5)) +
+  geom_col(fill = "coral") +
+  labs(
+    x = "Variable names",
+    y = "No. of na Values",
+    title = "Number of missing values for team statistics"
+  ) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  my_theme
+
+```
+
+&nbsp;
+
+**a.** Handling missing values for player_statistics. The first step is to remove the variables that are 100% empty.
+
+```{r echo = FALSE}
+# Remove variables if 100% empty------------------------------------------------
+
+# Handling missing values for team_statistics 1---------------------------------
+# Remove variables if 100% empty------------------------------------------------
+
+# list storing the indexes of empty columns
+empty_cols <- numeric()
+
+# find the columns which are all empty and store indexes in empty_cols
+for(i in 2:length(team_statistics_1)){
+  if(colSums(is.na(team_statistics_1[i])) == nrow(team_statistics_1)){
+    empty_cols <- c(empty_cols,i)
+  }
+}
+
+# check and remove columns that are all empty
+if(length(empty_cols) > 0){
+  team_statistics_1 <- team_statistics_1[,-(empty_cols)]
+  print("All the empty columns removed.")
+}else{
+  print("There are no columns that are 100% empty")
+}
+
+# check again if removed -------------------------------------------------------
+colSums(is.na(team_statistics_1))
+
+```
+
+&nbsp;
+
+**b.** Handling missing values for team_statistics. Removing rows for those columns where more less than 10%
+values are missing. 
+```{r echo = TRUE}
+# Handling missing values for player statistics --------------------------------
+
+prop_missing <- colMeans(is.na(player_statistics))
+cols_to_keep <- names(prop_missing[prop_missing < 0.1])
+player_statistics <- player_statistics[complete.cases(player_statistics[, cols_to_keep]),]
+
+# check again if removed -------------------------------------------------------
+
+colSums(is.na(player_statistics))
+```
+
+&nbsp;
+
+##### **2. Handling errors and duplicate values** -
+
+In the player statistics, there are duplicate rows of players. Those players need to be sorted and only the
+players with the maximum cumulative value for games played variable will be selected. As during a season,
+player could change teams, they have created this list in that way which considers matches for each team
+they played. 
+
+**a.** Renaming column names for player statistics
+```{r echo = TRUE}
+colnames(player_statistics) <- c("player_name",
+                                 "position",
+                                 "age",
+                                 "team",
+                                 "games",
+                                 "games_started", 
+                                 "minutes_played",
+                                 "field_goals",
+                                 "fg_attempts",
+                                 "fg_percentage",
+                                 "three_pointers",
+                                 "threep_attempts",
+                                 "threep_percentage",
+                                 "two_pointers",
+                                 "twop_attempts",
+                                 "twop_percentage",
+                                 "effective_fg", 
+                                 "free_throws",
+                                 "ft_attempts",
+                                 "ft_percentage",
+                                 "offense_rebounds",
+                                 "defence_rebounds", 
+                                 "total_rebounds",
+                                 "assists",
+                                 "steals",
+                                 "blocks",
+                                 "turnovers",
+                                 "fouls",
+                                 "points" )
+```
+
+&nbsp;
+
+**b.** Renaming column names for team statistics
+```{r echo = TRUE}
+colnames(team_statistics_1) <- c("rank",
+"age",
+"wins",
+"losses",
+"pythagorean_wins",
+"pythagorean_loss",
+"victory_margin",
+"schedule_strength",
+"simple_rating", 
+"offensive_rating",
+"defensive_rating",
+"net_rating",
+"pace_factor",
+"free_throw_attempt",
+"threep_attempt",
+"true_shoot",
+"effective_fg",
+"turnover_percentage",
+"offensive_per",
+"ft_per_fg",
+"defensive_per"
+)
+```
+
+&nbsp;
+
+**c.** Handling duplicates for player statistics
+```{r echo = TRUE}
+
+dim(player_statistics) 
+
+player_statistics <- player_statistics %>%
+  group_by(player_name) %>%
+  filter(`games` == max(`games`)) %>%
+  ungroup()
+
+dim(player_statistics) 
+```
+
+&nbsp;
+
+
+
+**d.** # Download clean files back into separate data folder to be used further
+
+```{r echo = TRUE}
+
+write.csv(player_salaries, "data/processed/player_salaries.csv")
+write.csv(player_statistics, "data/processed/player_statistics.csv")
+write.csv(team_payroll, "data/processed/team_payroll.csv")
+write.csv(team_statistics_1, "data/processed/team_statistics_1.csv")
+write.csv(team_statistics_2, "data/processed/team_statistics_2.csv")
+
+```
+
+&nbsp;
+
+### C. Exploratory data analysis
+&nbsp;
+EDA provides data visualization methodologies which help to understand and summarize a data set without prior assumptions. It is crucial for gaining insight into data. Analysis Problems identified at the start of the project will be discussed here- 
+
+&nbsp;
+
+#### **Example 1 - Distribution of field goal attempts**
+
+&nbsp;
+
+##### **Field goal attempts**
+
+```{r echo = FALSE, fig.align = 'center', warning=FALSE,message=FALSE}
+
+player_statistics %>%
+  ggplot(aes(x = effective_fg, fill = ..count..)) +
+  geom_histogram() +
+  scale_fill_gradient(low = "yellow", high = "pink") +
+  labs(
+    x = "Effective Field goal percentage",
+    y = "Frequency",
+    title = "Distribution of EFG%"
+  ) +
+  my_theme
+
+```
+
+&nbsp;
+
+#### **Count of players for different positions**
+
+&nbsp;
+
+##### **Player's position on field**
+
+```{r echo = FALSE, fig.align = 'center', warning=FALSE,message=FALSE}
+
+player_statistics %>%
+  group_by(position) %>%
+  summarise(count = n()) %>%
+  ggplot(aes(reorder(position, -count), y = count), order = desc(count)) +
+  geom_bar(stat = "identity", fill = "coral") +
+  geom_text(aes(y = count, label = count, vjust = -0.5)) +
+  labs(
+    x = "Positions",
+    y = "Count",
+    title = "Count of players for different positions"
+  ) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  my_theme
+
+```
+
+&nbsp;
+
+#### **Age distribution**
+
+&nbsp;
+
+##### **Player's age**
+
+```{r echo = FALSE, fig.align = 'center', warning=FALSE,message=FALSE}
+
+player_statistics %>%
+  group_by(age) %>%
+  summarise(count = n()) %>%
+  ggplot(aes(age, y = count)) +
+  geom_line(color = "red") +
+  geom_point(color = "red") +
+  labs(
+    x = "Age",
+    y = "Count",
+    title = "Age distribution"
+  ) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  my_theme
+
+```
+
+&nbsp;
+
+#### **Correlation Plot**
+
+
+```{r echo = FALSE, fig.align = 'center', warning=FALSE,message=FALSE}
+
+variables <- c("points", "age", "effective_fg", "fouls", "games", "minutes_played","ft_percentage","steals")
+corr_df <- player_statistics[, variables]
+
+# Create the correlation plot
+ggcorr(corr_df, label = TRUE, name = "rho")
+
+```
+
+&nbsp;
+
+#### **Attaching player salaries to player statistics for better analysis**
+
+```{r echo = TRUE}
+
+player_statistics <- 
+  merge(player_statistics, 
+        player_salaries[,c("player_name","salary")], by = "player_name", all.x = TRUE)
+
+```
+
+&nbsp;
+
+#### **Diving datasets based on positions**
+
+```{r echo = TRUE}
+
+# Dividing datasets for each position
+
+point_guard_df <- subset(player_statistics, position == "PG")
+shooting_guard_df <- subset(player_statistics, position == "SG")
+small_forward_df <- subset(player_statistics, position == "SF")
+power_forward_df <- subset(player_statistics, position == "PF")
+center_df <- subset(player_statistics, position == "C")
+
+
+```
+
+&nbsp;
+
+
+### D. Data Modelling & prediction for selecting players 
+
+Data modeling is a crucial aspect of data analysis that involves the process of creating a model based on a specific dataset to uncover relationships, that can aid in making better decisions. In this project, data modeling has been used to predict the performance of basketball players based on specific attributes for each position.
+
+The modeling process involved selecting key characteristics for each position based on research. These characteristics were then used to build separate models for each position using regression techniques. The models were trained on historical data to predict the expected performance of a player based on their attributes.
+
+After building the models, a new variable was created using the predicted values. This variable represents the expected performance of a player for a given position based on their attributes. A budget threshold was set for each position, and players were selected based on their predicted performance within that budget.
+
+&nbsp;
+
+#### **1. Selecting a player for point guard**
+
+Creating a correlation plot using the variables required for the point guard position.
+
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.align='center'}
+
+variables <- c("points", "assists", "turnovers","three_pointers")
+corr_point_guard <- point_guard_df[, variables]
+
+# Create the correlation plot
+ggcorr(corr_point_guard, label = TRUE, name = "rho")
+
+```
+&nbsp;
+
+##### **Model summary for Point Guard**
+
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.align='center'}
+
+pg_model <- lm(points ~ assists + turnovers + three_pointers, point_guard_df)
+
+summary(pg_model)
+
+```
+&nbsp;
+
+##### **Prediction for point guard**
+```{r echo = TRUE, warning = FALSE, message = FALSE, fig.align='center'}
+
+# Prediction of score variable just based on those specific parameters
+
+output_pg <- point_guard_df[c("assists", "turnovers", "three_pointers","player_name", "salary")]
+
+predicted_values <- predict(pg_model,output_pg)
+
+output_pg$predicted_values <- predicted_values
+
+```
+&nbsp;
+
+##### **Prediction score for point guard**
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.align='center'}
+
+#1 Predicted values
+
+output_pg %>%
+  ggplot(aes(x = predicted_values, fill = ..count..)) +
+  geom_histogram() +
+  scale_fill_gradient(low = "lightpink", high = "red") +
+  labs(
+    x = "Predicted score",
+    y = "Frequency",
+    title = "Distribution of predicted score (PG)"
+  ) +
+  my_theme
+```
+&nbsp;
+
+##### **Salary distribution for point guard**
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.align='center'}
+
+#2 Salary
+
+output_pg %>%
+  ggplot(aes(x = salary, fill = ..count..)) +
+  geom_histogram() +
+  labs(
+    x = "Salary",
+    y = "Frequency",
+    title = "Distribution of Salary (PG)"
+  ) +
+  my_theme
+
+```
+
+&nbsp;
+
+##### **POINT GUARD SELECTION**
+
+The chart shows that we should select the player with maximum score and and considering the budget salary less than 18 million. 
+
+```{r echo = TRUE, warning = FALSE, message = FALSE, fig.align='center'}
+output_pg %>%
+  filter(salary < 18000000) %>%
+  arrange(desc(predicted_values)) %>%
+  slice(1)
+```
+
+&nbsp;
+
+#### **2. Selecting a player for Shooting guard**
+
+Creating a correlation plot using the variables required for the shooting guard position.
+
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.align='center'}
+
+variables <- c("points", "field_goals","three_pointers", "steals", "minutes_played")
+corr_shoot_guard <- shooting_guard_df[, variables]
+
+# Create the correlation plot
+ggcorr(corr_shoot_guard, label = TRUE, name = "rho")
+
+```
+&nbsp;
+
+##### **Model summary for Shooting guard**
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.align='center'}
+
+sg_model <- lm(points ~ field_goals + steals + three_pointers + minutes_played, shooting_guard_df)
+
+summary(sg_model)
+
+```
+&nbsp;
+
+##### **Prediction for shooting guard**
+```{r echo = TRUE, warning = FALSE, message = FALSE, fig.align='center'}
+
+# Prediction of score variable just based on those specific parameters
+
+output_sg <- shooting_guard_df[c("field_goals","three_pointers", 
+                              "steals", "minutes_played","player_name", "salary")]
+
+predicted_sg <- predict(sg_model,output_sg)
+
+output_sg$predicted_values<- predicted_sg
+
+```
+&nbsp;
+
+##### **Prediction score for Shooting guard**
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.align='center'}
+
+#1 Predicted values
+
+#1 Predicted values
+
+output_sg %>%
+  ggplot(aes(x = predicted_values, fill = ..count..)) +
+  geom_histogram() +
+  scale_fill_gradient(low = "brown", high = "red") +
+  labs(
+    x = "Predicted score",
+    y = "Frequency",
+    title = "Distribution of predicted score (SG)"
+  ) +
+  my_theme
+```
+&nbsp;
+
+##### **Salary distribution for shooting guard**
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.align='center'}
+
+#2 Salary
+
+output_sg %>%
+  ggplot(aes(x = salary, fill = ..count..)) +
+  geom_histogram() +
+  labs(
+    x = "Salary",
+    y = "Frequency",
+    title = "Distribution of Salary (SG)"
+  ) +
+  my_theme
+
+```
+
+&nbsp;
+
+##### **SHOOTING GUARD SELECTION**
+
+The chart shows that we should select the player with maximum score and and considering the budget salary less than 20 million. 
+
+```{r echo = TRUE, warning = FALSE, message = FALSE, fig.align='center'}
+
+# This shows that we should select the player with score > 1500 and 
+# and considering the budget salary less than 20 million. 
+
+output_sg %>%
+  filter(salary < 20000000) %>%
+  arrange(desc(predicted_values)) %>%
+  slice(1)
+
+
+```
+
+
+&nbsp;
+
+####  **3. Selecting a player for Small forward**
+
+Creating a correlation plot using the variables required for the small forward position.
+
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.align='center'}
+
+variables <- c("points", "total_rebounds","three_pointers", "assists")
+corr_small_forward <- small_forward_df[, variables]
+
+# Create the correlation plot
+ggcorr(corr_small_forward, label = TRUE, name = "rho")
+
+```
+&nbsp;
+
+##### **Model summary for Small forward**
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.align='center'}
+
+sf_model <- lm(points ~ total_rebounds + assists + three_pointers, small_forward_df)
+
+summary(sf_model)
+```
+&nbsp;
+
+##### **Prediction for small forward**
+```{r echo = TRUE, warning = FALSE, message = FALSE, fig.align='center'}
+
+# Prediction of score variable just based on those specific parameters
+
+output_sf <- small_forward_df[c("total_rebounds","three_pointers", "assists","player_name", "salary")]
+
+predicted_sf <- predict(sf_model,output_sf)
+
+output_sf$predicted_values<- predicted_sf
+
+```
+&nbsp;
+
+##### **Prediction score for Small Forward**
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.align='center'}
+
+#1 Predicted values
+
+output_sf %>%
+  ggplot(aes(x = predicted_values, fill = ..count..)) +
+  geom_histogram() +
+  scale_fill_gradient(low = "green", high = "red") +
+  labs(
+    x = "Predicted score",
+    y = "Frequency",
+    title = "Distribution of predicted score (SF)"
+  ) +
+  my_theme
+```
+&nbsp;
+
+##### **Salary distribution for small forward**
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.align='center'}
+
+#2 Salary
+
+output_sf %>%
+  ggplot(aes(x = salary, fill = ..count..)) +
+  geom_histogram() +
+  labs(
+    x = "Salary",
+    y = "Frequency",
+    title = "Distribution of Salary (SF)"
+  ) +
+  my_theme
+
+```
+&nbsp;
+
+##### **SMALL FORWARD SELECTION**
+
+The chart shows that we should select the player with maximum score and and considering the budget salary less than 20 million. 
+
+```{r echo = TRUE, warning = FALSE, message = FALSE, fig.align='center'}
+
+# This shows that we should select the player with score > 1500 and 
+# and considering the budget salary less than 20 million. 
+
+output_sf %>%
+  filter(salary < 20000000) %>%
+  arrange(desc(predicted_values)) %>%
+  slice(1)
+
+
+```
+
+&nbsp;
+
+#### **4. Selecting a player for Power forward**
+
+Creating a correlation plot using the variables required for the power forward position.
+
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.align='center'}
+
+variables <- c("points", "total_rebounds","two_pointers", "blocks")
+corr_power_forward <- power_forward_df[, variables]
+
+# Create the correlation plot
+ggcorr(corr_power_forward, label = TRUE, name = "rho")
+
+```
+&nbsp;
+
+##### **Model summary for power forward**
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.align='center'}
+
+pf_model <- lm(points ~ total_rebounds + two_pointers + blocks, power_forward_df)
+
+summary(pf_model)
+```
+&nbsp;
+
+##### **Prediction for Power forward**
+```{r echo = TRUE, warning = FALSE, message = FALSE, fig.align='center'}
+
+# Prediction of score variable just based on those specific parameters
+
+output_pf <- power_forward_df[c("total_rebounds","two_pointers", "blocks","player_name", "salary")]
+
+predicted_pf <- predict(pf_model,output_pf)
+
+output_pf$predicted_values<- predicted_pf
+
+```
+&nbsp;
+
+##### **Prediction score for Power forward**
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.align='center'}
+
+#1 Predicted values
+
+output_pf %>%
+  ggplot(aes(x = predicted_values, fill = ..count..)) +
+  geom_histogram() +
+  scale_fill_gradient(low = "coral", high = "red") +
+  labs(
+    x = "Predicted score",
+    y = "Frequency",
+    title = "Distribution of predicted score"
+  ) +
+  my_theme
+```
+&nbsp;
+
+##### **Salary distribution for power forward**
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.align='center'}
+
+#2 Salary
+
+output_pf %>%
+  ggplot(aes(x = salary, fill = ..count..)) +
+  geom_histogram() +
+  labs(
+    x = "Salary",
+    y = "Frequency",
+    title = "Distribution of Salary"
+  ) +
+  my_theme
+
+```
+&nbsp;
+
+##### **POWER FORWARD SELECTION**
+```{r echo = TRUE, warning = FALSE, message = FALSE, fig.align='center'}
+
+# This shows that we should select the player with score > 1500 and 
+# and considering the budget salary less than 20 million. 
+
+output_pf %>%
+  filter(salary < 20000000) %>%
+  arrange(desc(predicted_values)) %>%
+  slice(1)
+
+
+```
+
+&nbsp;
+
+#### **5. Selecting a player for Center**
+
+Creating a correlation plot using the variables required for the Center position.
+
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.align='center'}
+
+variables <- c("points", "defence_rebounds","two_pointers", "blocks")
+corr_center <- center_df[, variables]
+
+# Create the correlation plot
+ggcorr(corr_center, label = TRUE, name = "rho")
+
+```
+&nbsp;
+
+##### **Model summary for Center**
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.align='center'}
+
+ct_model <- lm(points ~ defence_rebounds + two_pointers + blocks, center_df)
+
+summary(ct_model)
+```
+&nbsp;
+
+##### **Prediction for center**
+```{r echo = TRUE, warning = FALSE, message = FALSE, fig.align='center'}
+
+# Prediction of score variable just based on those specific parameters
+
+output_ct <- center_df[c("defence_rebounds","two_pointers", "blocks","player_name", "salary")]
+
+predicted_ct <- predict(ct_model,output_ct)
+
+output_ct$predicted_values <- predicted_ct
+
+```
+&nbsp;
+
+##### **Prediction score for Center**
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.align='center'}
+
+#1 Predicted values
+
+output_ct %>%
+  ggplot(aes(x = predicted_values, fill = ..count..)) +
+  geom_histogram() +
+  scale_fill_gradient(low = "yellow", high = "magenta") +
+  labs(
+    x = "Predicted score",
+    y = "Frequency",
+    title = "Distribution of predicted score (Center)"
+  ) +
+  my_theme
+```
+&nbsp;
+
+##### **Salary distribution for center**
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.align='center'}
+
+#2 Salary
+
+output_ct %>%
+  ggplot(aes(x = salary, fill = ..count..)) +
+  geom_histogram() +
+  labs(
+    x = "Salary",
+    y = "Frequency",
+    title = "Distribution of Salary (Center)"
+  ) +
+  my_theme
+
+```
+&nbsp;
+
+##### **CENTER SELECTION**
+
+The chart shows that we should select the player with maximum score and and considering the budget salary less than 20 million. 
+
+```{r echo = TRUE, warning = FALSE, message = FALSE, fig.align='center'}
+
+# This shows that we should select the player with score > 1500 and 
+# and considering the budget salary less than 20 million. 
+
+output_ct %>%
+  filter(salary < 20000000) %>%
+  arrange(desc(predicted_values)) %>%
+  slice(1)
+
+
+```
+
+&nbsp;
+
+### E. Player recommendations
+&nbsp;
+
+###### Point guard
+
+1. I choose **Angelo Russell** for **Point guard**.
+Salary - 7019698
+&nbsp;
+
+###### Shooting guard
+2. I choose **Klay Thompson** for **Shooting guard** 
+Salary - 18988725
+&nbsp;
+
+###### Small forward
+3. I choose **Khris Middleton** for **Small forward**
+Salary - 13000000
+&nbsp;
+
+###### Power forward
+4. I choose **Julius Randle** for **Power forward**
+Salary - 8641000
+&nbsp;
+
+###### Center
+5. I choose **Nikola Vucevic** for **Center**
+Salary - 12750000
+&nbsp;
+
+So the total salary for all 5 players is 61.37 million (approx) which is under the budget specifically assigned for main players.
+
+&nbsp;
+
+### F. Summary 
+
+In this project, I was tasked with finding the best five starting players (one from each position) for the Chicago Bulls basketball team for the upcoming season. The team's budget for player contracts was $118 million, so I had to find players who could perform well on the court without exceeding the budget.
+
+To do this, I first obtained data on NBA players from the past season and cleaned it up, filtering out unnecessary columns and missing values. Then, I explored the data using visualizations to gain insights on how different variables were related to each other and to player performance.
+
+Next, I performed a linear regression analysis on the data to build a model that could predict a player's score based on their performance statistics. Using this model, I identified the players who were likely to score the highest and selected the best player for each position, considering their predicted scores and their salaries.
+
+After analyzing the data and modeling the players, I have decided to select Angelo Russell as the Point Guard, Klay Thompson as the Shooting Guard, Khris Middleton as the Small Forward, Julius Randle as the Power Forward and Nikola Vucevic as the Center for the Chicago Bulls basketball team. I believe that these players will perform well on the court and help the team to improve its ranking in the upcoming season.
+
+### G. References
+
+1. Wikipedia. Basketball positions. [cited 7 May 2023]. Available from: https://en.wikipedia.org/wiki/Basketball_positions
+
+2. Red Bull. Basketball Positions: What Each Player Does [Internet]. Red Bull; [cited 2023 May 10]. Available from: https://www.redbull.com/us-en/basketball-positions-what-each-player-does
+
+3. Golliver, B. (2018, September 21). Breaking Down NBA Teams' Revenue, Spending by Market Size. Sports Illustrated. https://www.si.com/nba/2018/09/21/nba-teams-revenue-spending-breakdown-small-large-market
+
+4. Smith J. 2022 Ranking: Top 20 NBA Players Right Now. NBC Sports Washington [Internet]. 2022 [cited 2023 May 07]. Available from: https://www.nbcsports.com/washington/wizards/2022-ranking-top-20-nba-players-right-now
+
+
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+
+
